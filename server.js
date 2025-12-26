@@ -2,7 +2,8 @@
 const express = require('express');
 const app = express();
 // Importa el módulo 'https' para crear un servidor HTTPS.
-const https = require('https');
+// const https = require('https');
+const http = require('http');
 // Importa el módulo 'morgan' para el registro de solicitudes HTTP.
 const logger = require('morgan');
 // Importa el módulo 'cors' para habilitar Cross-Origin Resource Sharing.
@@ -11,6 +12,8 @@ const cors = require('cors');
 const swaggerUi = require('swagger-ui-express');
 // Importa la configuración de Swagger desde un archivo local.
 const swaggerSpec = require('./config/swaggerConfig');
+
+const passport = require('passport');
 
 /*
  * RUTAS
@@ -36,6 +39,11 @@ app.use(express.urlencoded({
 
 // Habilita CORS para permitir solicitudes desde diferentes orígenes.
 app.use(cors());
+app.use(passport.initialize());
+app.use(passport.session());
+
+require('./config/passport')(passport);
+
 // Configura la ruta '/api-docs' para servir la interfaz de usuario de Swagger.
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
@@ -43,18 +51,18 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.disable('x-powered-by');
 
 // Lee los archivos de la clave privada y el certificado SSL.
-let options;
-try {
-    options = {
-        key: fs.readFileSync(path.join(__dirname, 'ssl', '192.168.123.36.key')),
-        cert: fs.readFileSync(path.join(__dirname, 'ssl', '192.168.123.36.crt')),
-        passphrase: process.env.SSL_KEY_PASSPHRASE // Añade la contraseña desde una variable de entorno
-    };
-} catch (error) {
-    console.error('Error al leer los archivos SSL. Asegúrate de que los archivos "private.key" y "certificate.crt" existan en el directorio "ssl".');
-    console.error(error);
-    process.exit(1); // Detiene la ejecución si no se pueden cargar los certificados.
-}
+// let options;
+// try {
+//     options = {
+//         key: fs.readFileSync(path.join(__dirname, 'ssl', '192.168.123.36.key')),
+//         cert: fs.readFileSync(path.join(__dirname, 'ssl', '192.168.123.36.crt')),
+//         passphrase: process.env.SSL_KEY_PASSPHRASE // Añade la contraseña desde una variable de entorno
+//     };
+// } catch (error) {
+//     console.error('Error al leer los archivos SSL. Asegúrate de que los archivos "private.key" y "certificate.crt" existan en el directorio "ssl".');
+//     console.error(error);
+//     process.exit(1); // Detiene la ejecución si no se pueden cargar los certificados.
+// }
 
 // Establece el puerto en la configuración de la aplicación.
 app.set('port', port);
@@ -69,10 +77,12 @@ users(app);
 const HOST = process.env.HOSTNAME || '0.0.0.0';
 
 // Crea un servidor HTTPS usando las opciones SSL y la aplicación Express.
-const server = https.createServer(options, app);
+// const server = https.createServer(options, app);
+const server = http.createServer(app);
 // Inicia el servidor HTTPS en el puerto y host especificados.
 server.listen(port, HOST, function () {
-    console.log(`Aplicacion de NodeJS iniciada en https://${HOST}:${port}/api-docs`);
+    // console.log(`Aplicacion de NodeJS iniciada en https://${HOST}:${port}/api-docs`);
+    console.log(`Aplicacion de NodeJS iniciada en http://${HOST}:${port}/api-docs`);
 });
 
 // Middleware de manejo de errores global.

@@ -7,6 +7,7 @@
 
 // Importa la instancia de conexión a la base de datos configurada con pg-promise.
 const db = require('../config/config');
+const bcrypt = require('bcryptjs');
 
 /**
  * Objeto que agrupa los métodos del modelo User.
@@ -32,9 +33,27 @@ User.getAll = () => {
     return db.manyOrNone(sql);
 }
 
-User.create = (user) => {
+User.findById = (id, callback) => {
     const sql = `
-        INSERT INTO users(email, name, lastname, phone, image, password, created_at, update_at) 
+    SELECT id, email, name, lastname, phone, password, session_token
+    FROM users
+    WHERE id = $1`;
+    return db.manyOrNone(sql, id).then(user => { callback(null, user); });
+}
+
+User.findByEmail = (email) => {
+    const sql = `
+    SELECT id, email, name, lastname, phone, password, session_token
+    FROM users
+    WHERE email = $1`;
+    return db.oneOrNone(sql, email);
+}
+
+User.create = (user) => {
+    let hash = bcrypt.hashSync(user.password, 10);
+
+    const sql = `
+        INSERT INTO users(email, name, lastname, phone, image, password, created_at, updated_at) 
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
     `;
 
@@ -44,7 +63,7 @@ User.create = (user) => {
         user.lastname,
         user.phone,
         user.image,
-        user.password,
+        hash,
         new Date(),
         new Date()
     ]);

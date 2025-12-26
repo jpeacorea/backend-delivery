@@ -7,6 +7,12 @@
 
 // Importa el modelo User para acceder a los métodos de la base de datos.
 const User = require('../models/user');
+const bcrypt = require("bcryptjs");
+const passport = require("passport");
+const jwt = require("jsonwebtoken");
+const keys = require("../config/keys");
+const e = require("express");
+const Rol = require("../models/rol");
 
 /**
  * Objeto controlador que agrupa las funciones de manejo de rutas para usuarios.
@@ -56,18 +62,82 @@ module.exports = {
             const user = req.body;
             const data = await User.create(user);
 
+            await Rol.create(data.id, 1);
+
+            const token = jwt.sign({ id: user.id , email: user.email}, keys.secretOrKey, {
+                //expiresIn: 86400
+            });
+
+            const myData = {
+                id: data.id,
+                name: data.name,
+                lastname: data.lastname,
+                email: user.email,
+                phone: user.phone,
+                image: user.image,
+                session_token: `JWT ${token}`
+            }
+
             return res.status(201).json({
                 success: true,
                 message: 'Usuario creado correctamente',
-                data: {
-                    "id": data.id
-                }
+                data: myData
             })
         } catch (e) {
             console.log(`Error: ${e}`);
             return res.status(500).json({
                 success: false,
                 message: 'Hubo un error con el registro del usuario',
+                error: e.message
+            })
+        }
+    },
+    
+    async login(req, res, next) {
+        try{
+            const email = req.body.email;
+            const password = req.body.password;
+
+            const myUser = await User.findByEmail(email);
+
+            if (!myUser) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'El email no existe'
+                })
+            }
+
+            const isPasswordValid = await bcrypt.compare(password, myUser.password);
+            if (isPasswordValid) {
+                const token = jwt.sign({id: myUser.id, email: myUser.email}, keys.secretOrKey, {
+                    // expiresIn: '1d'
+                })
+
+                const data = {
+                    id: myUser.id,
+                    name: myUser.name,
+                    lastname: myUser.lastname,
+                    email: myUser.email,
+                    phone: myUser.phone,
+                    image: myUser.image,
+                    session_token: `JWT ${token}`
+                };
+                return res.status(201).json({
+                    success: true,
+                    message: 'El usuario ha sido autenticado correctamente',
+                    data: data
+                })
+            } else {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Usuario o contraseña incorrecto',
+                })
+            }
+        } catch (e) {
+            console.log(`Error: ${e}`);
+            return res.status(501).json({
+                success: false,
+                message: 'Hubo un error con el login del usuario',
                 error: e.message
             })
         }

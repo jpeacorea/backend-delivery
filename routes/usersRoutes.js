@@ -82,5 +82,5 @@ module.exports = (app) => {
      *       401:
      *         description: Credenciales incorrectas.
      */
-    //app.post('/api/users/login', UsersController.login);
+    app.post('/api/users/login', UsersController.login);
 }
