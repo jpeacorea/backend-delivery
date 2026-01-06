@@ -1,0 +1,106 @@
+version: '3.8'
+
+services:
+  # =====================================
+  # Backend Node.js Application
+  # =====================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: delivery-backend
+    restart: unless-stopped
+    ports:
+      - "${PORT:-7847}:7847"
+    environment:
+      - NODE_ENV=${NODE_ENV:-development}
+      - PORT=7847
+      - HOSTNAME=0.0.0.0
+      # Database Configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-delivery_db}
+      - DB_USER=${DB_USER:-delivery_user}
+      - DB_PASSWORD=${DB_PASSWORD:-delivery_password}
+      # JWT Configuration
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_key}
+      # Appwrite Configuration (optional)
+      - APPWRITE_ENDPOINT=${APPWRITE_ENDPOINT:-}
+      - APPWRITE_PROJECT_ID=${APPWRITE_PROJECT_ID:-}
+      - APPWRITE_API_KEY=${APPWRITE_API_KEY:-}
+      - APPWRITE_BUCKET_ID=${APPWRITE_BUCKET_ID:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - delivery-network
+    volumes:
+      - ./uploads:/app/uploads
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7847/api-docs" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # =====================================
+  # PostgreSQL Database
+  # =====================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: delivery-postgres
+    restart: unless-stopped
+    ports:
+      - "${DB_EXTERNAL_PORT:-5432}:5432"
+    environment:
+      - POSTGRES_DB=${DB_DATABASE:-delivery_db}
+      - POSTGRES_USER=${DB_USER:-delivery_user}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-delivery_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks:
+      - delivery-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER:-delivery_user} -d ${DB_DATABASE:-delivery_db}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # =====================================
+  # pgAdmin (Optional - Database Management)
+  # =====================================
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: delivery-pgadmin
+    restart: unless-stopped
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@delivery.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin123}
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - delivery-network
+    depends_on:
+      - postgres
+    profiles:
+      - tools
+
+# =====================================
+# Networks Configuration
+# =====================================
+networks:
+  delivery-network:
+    driver: bridge
+
+# =====================================
+# Volumes Configuration
+# =====================================
+volumes:
+  postgres_data:
+    driver: local
+  pgadmin_data:
+    driver: local

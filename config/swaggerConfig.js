@@ -10,7 +10,7 @@ const swaggerDefinition = {
   servers: [
     {
       // url: 'https://192.168.123.36:3000',
-      url: 'http://192.168.123.34:3000',
+      url: 'http://192.168.123.39:3000',
       description: 'Servidor de desarrollo',
     },
   ],

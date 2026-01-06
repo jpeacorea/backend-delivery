@@ -13,6 +13,7 @@ const jwt = require("jsonwebtoken");
 const keys = require("../config/keys");
 const e = require("express");
 const Rol = require("../models/rol");
+const { uploadFile, getPreviewUrl } = require('../config/appwriteConfig');
 
 /**
  * Objeto controlador que agrupa las funciones de manejo de rutas para usuarios.
@@ -64,7 +65,7 @@ module.exports = {
 
             await Rol.create(data.id, 1);
 
-            const token = jwt.sign({ id: user.id , email: user.email}, keys.secretOrKey, {
+            const token = jwt.sign({ id: user.id, email: user.email }, keys.secretOrKey, {
                 //expiresIn: 86400
             });
 
@@ -92,9 +93,103 @@ module.exports = {
             })
         }
     },
-    
+
+    /**
+     * Actualiza los datos de un usuario con posibilidad de subir imagen
+     * Compatible con Android: PUT /api/users/update
+     * Acepta multipart/form-data con:
+     *   - image: archivo de imagen (opcional)
+     *   - user: JSON string con datos del usuario
+     */
+    async update(req, res, next) {
+        try {
+            // Parsear el JSON del usuario enviado desde Android
+            let user;
+            if (req.body.user) {
+                user = typeof req.body.user === 'string'
+                    ? JSON.parse(req.body.user)
+                    : req.body.user;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No se proporcionaron datos del usuario'
+                });
+            }
+
+            // Si se envió una imagen, subirla a Appwrite
+            if (req.file) {
+                const { buffer, originalname, mimetype } = req.file;
+                const result = await uploadFile(buffer, originalname, mimetype);
+                user.image = result.url;
+            }
+
+            // Actualizar usuario en la base de datos
+            const updatedUser = await User.update(user);
+
+            if (!updatedUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Usuario no encontrado'
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: 'Usuario actualizado correctamente',
+                data: updatedUser
+            });
+        } catch (error) {
+            console.error('Error en update:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error al actualizar el usuario',
+                error: error.message
+            });
+        }
+    },
+
+    async updateWithoutImage(req, res, next) {
+        try {
+            // Parsear el JSON del usuario enviado desde Android
+            let user;
+            if (req.body.user) {
+                user = typeof req.body.user === 'string'
+                    ? JSON.parse(req.body.user)
+                    : req.body.user;
+            } else {
+                return res.status(400).json({
+                    success: false,
+                    message: 'No se proporcionaron datos del usuario'
+                });
+            }
+
+            // Actualizar usuario en la base de datos
+            const updatedUser = await User.update(user);
+
+            if (!updatedUser) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Usuario no encontrado'
+                });
+            }
+
+            return res.status(200).json({
+                success: true,
+                message: 'Usuario actualizado correctamente',
+                data: updatedUser
+            });
+        } catch (error) {
+            console.error('Error en update:', error);
+            return res.status(500).json({
+                success: false,
+                message: 'Error al actualizar el usuario',
+                error: error.message
+            });
+        }
+    },
+
     async login(req, res, next) {
-        try{
+        try {
             const email = req.body.email;
             const password = req.body.password;
 
@@ -109,7 +204,7 @@ module.exports = {
 
             const isPasswordValid = await bcrypt.compare(password, myUser.password);
             if (isPasswordValid) {
-                const token = jwt.sign({id: myUser.id, email: myUser.email}, keys.secretOrKey, {
+                const token = jwt.sign({ id: myUser.id, email: myUser.email }, keys.secretOrKey, {
                     // expiresIn: '1d'
                 })
 
@@ -120,8 +215,12 @@ module.exports = {
                     email: myUser.email,
                     phone: myUser.phone,
                     image: myUser.image,
-                    session_token: `JWT ${token}`
+                    session_token: `JWT ${token}`,
+                    roles: myUser.roles
                 };
+
+                await User.updateSessionToken(myUser.id, `JWT ${token}`)
+
                 return res.status(201).json({
                     success: true,
                     message: 'El usuario ha sido autenticado correctamente',
