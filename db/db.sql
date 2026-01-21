@@ -53,7 +53,17 @@ CREATE TABLE
         ON UPDATE CASCADE ON DELETE CASCADE,
     PRIMARY KEY
         (id_user, id_role)
-)
+);
+
+DROP TABLE IF EXISTS categories CASCADE;
+
+CREATE TABLE categories (
+                            id BIGSERIAL PRIMARY KEY,
+                            name VARCHAR(180) NOT NULL UNIQUE,
+                            image VARCHAR(255) NOT NULL,
+                            created_at TIMESTAMP(0) NOT NULL,
+                            updated_at TIMESTAMP(0) NOT NULL
+);
 
 -- Inserción del rol CLIENTE
     INSERT INTO roles (

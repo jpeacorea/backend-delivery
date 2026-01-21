@@ -22,6 +22,8 @@ const passport = require('passport');
 const users = require('./routes/usersRoutes');
 // Importa las rutas de uploads
 const uploads = require('./routes/uploadsRoutes');
+// Importa las rutas de categorias
+const categories = require('./routes/categoriesRoutes');
 // Importa el módulo 'fs' para interactuar con el sistema de archivos.
 const fs = require("node:fs");
 // Importa el módulo 'path' para trabajar con rutas de archivos y directorios.
@@ -76,6 +78,8 @@ app.set('port', port);
 users(app);
 // Llama a la función de rutas de uploads
 uploads(app);
+// Llama a la función de rutas de categorias
+categories(app);
 
 // Define el HOST, usando la variable de entorno HOSTNAME o '0.0.0.0' por defecto.
 const HOST = process.env.HOSTNAME || '0.0.0.0';
