@@ -10,7 +10,7 @@ COPY package*.json ./
 COPY pnpm-lock.yaml* ./
 
 # Instalar pnpm e instalar dependencias
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
+RUN npm install -g pnpm && pnpm install
 
 # =====================================
 # Production Stage
